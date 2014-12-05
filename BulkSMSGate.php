@@ -4,7 +4,8 @@
  * Class BulkSMSGate
  */
 
-class BulkSMSGate extends CComponent{
+class BulkSMSGate extends CComponent
+{
 
     /**
      * Username, provided by bulksms.com
@@ -24,14 +25,15 @@ class BulkSMSGate extends CComponent{
     public $url = 'http://bulksms.vsms.net/eapi/submission/send_sms/2/2.0';
 
     /**
-	 * We recommend that you use port 5567 instead of port 80, but your
-	 * firewall will probably block access to this port (see FAQ on http://bulksms.com for more details):
-	 * $var int
-	 */
+     * We recommend that you use port 5567 instead of port 80, but your
+     * firewall will probably block access to this port (see FAQ on http://bulksms.com for more details):
+     * $var int
+     */
     public $port = 5567;
 
 
-    public function init(){
+    public function init()
+    {
 
     }
 
@@ -40,7 +42,8 @@ class BulkSMSGate extends CComponent{
      * @param $message
      * @return mixed $result
      */
-    public function send($to, $message){
+    public function send($to, $message)
+    {
 
         $to = static::prepareTo($to);
 
@@ -57,11 +60,13 @@ class BulkSMSGate extends CComponent{
      * @param $to
      * @return string
      */
-    protected static function prepareTo($to){
+    protected static function prepareTo($to)
+    {
         return preg_replace("/[^0-9,.]/", "", $to);
     }
 
-    protected function sendMessage($post_body, $url, $port){
+    protected function sendMessage($post_body, $url, $port)
+    {
 
         /*
          * Do not supply $post_fields directly as an argument to CURLOPT_POSTFIELDS,
@@ -69,19 +74,19 @@ class BulkSMSGate extends CComponent{
          * multi-part form post, which is not supported:
         */
 
-        $ch = curl_init( );
-        curl_setopt ( $ch, CURLOPT_URL, $url );
-        curl_setopt ( $ch, CURLOPT_PORT, $port );
-        curl_setopt ( $ch, CURLOPT_POST, 1 );
-        curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
-        curl_setopt ( $ch, CURLOPT_POSTFIELDS, $post_body );
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_PORT, $port);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_body);
         // Allowing cUrl funtions 20 second to execute
-        curl_setopt ( $ch, CURLOPT_TIMEOUT, 20 );
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
         // Waiting 20 seconds while trying to connect
-        curl_setopt ( $ch, CURLOPT_CONNECTTIMEOUT, 20 );
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
 
-        $response_string = curl_exec( $ch );
-        $curl_info = curl_getinfo( $ch );
+        $response_string = curl_exec($ch);
+        $curl_info = curl_getinfo($ch);
 
         $sms_result = array();
         $sms_result['success'] = 0;
@@ -92,47 +97,42 @@ class BulkSMSGate extends CComponent{
         $sms_result['api_message'] = '';
         $sms_result['api_batch_id'] = '';
 
-        if ( $response_string == FALSE ) {
-            $sms_result['details'] .= "cURL error: " . curl_error( $ch ) . "\n";
-        } elseif ( $curl_info[ 'http_code' ] != 200 ) {
+        if ($response_string == FALSE) {
+            $sms_result['details'] .= "cURL error: " . curl_error($ch) . "\n";
+        } elseif ($curl_info['http_code'] != 200) {
             $sms_result['transient_error'] = 1;
-            $sms_result['details'] .= "Error: non-200 HTTP status code: " . $curl_info[ 'http_code' ] . "\n";
-        }
-        else {
+            $sms_result['details'] .= "Error: non-200 HTTP status code: " . $curl_info['http_code'] . "\n";
+        } else {
             $sms_result['details'] .= "Response from server: $response_string\n";
-            $api_result = explode( '|', $response_string );
+            $api_result = explode('|', $response_string);
             $status_code = $api_result[0];
             $sms_result['api_status_code'] = $status_code;
             $sms_result['api_message'] = $api_result[1];
-            if ( count( $api_result ) != 3 ) {
-                $sms_result['details'] .= "Error: could not parse valid return data from server.\n" . count( $api_result );
+            if (count($api_result) != 3) {
+                $sms_result['details'] .= "Error: could not parse valid return data from server.\n" . count($api_result);
             } else {
                 if ($status_code == '0') {
                     $sms_result['success'] = 1;
                     $sms_result['api_batch_id'] = $api_result[2];
                     $sms_result['details'] .= "Message sent - batch ID $api_result[2]\n";
-                }
-                else if ($status_code == '1') {
+                } else if ($status_code == '1') {
                     # Success: scheduled for later sending.
                     $sms_result['success'] = 1;
                     $sms_result['api_batch_id'] = $api_result[2];
-                }
-                else {
+                } else {
                     $sms_result['details'] .= "Error sending: status code [$api_result[0]] description [$api_result[1]]\n";
                 }
 
 
-
-
-
             }
         }
-        curl_close( $ch );
+        curl_close($ch);
 
         return $sms_result;
     }
 
-    protected static function unicodeSMS($username, $password, $message, $to){
+    protected static function unicodeSMS($username, $password, $message, $to)
+    {
         $postFields = [
             'username' => $username,
             'password' => $password,
@@ -144,16 +144,17 @@ class BulkSMSGate extends CComponent{
 
     }
 
-    protected static function makePostBody($post_fields) {
+    protected static function makePostBody($post_fields)
+    {
         $stop_dup_id = static::makeStopDupId();
         if ($stop_dup_id > 0) {
             $post_fields['stop_dup_id'] = static::makeStopDupId();
         }
         $post_body = '';
-        foreach( $post_fields as $key => $value ) {
-            $post_body .= urlencode( $key ).'='.urlencode( $value ).'&';
+        foreach ($post_fields as $key => $value) {
+            $post_body .= urlencode($key) . '=' . urlencode($value) . '&';
         }
-        $post_body = rtrim( $post_body,'&' );
+        $post_body = rtrim($post_body, '&');
 
         return $post_body;
     }
@@ -172,7 +173,8 @@ class BulkSMSGate extends CComponent{
      * You can't simply use an incrementing counter, if there's a chance that
      * the counter will be reset.
      */
-	protected static function makeStopDupId() {
+    protected static function makeStopDupId()
+    {
         return 0;
     }
 
@@ -180,9 +182,9 @@ class BulkSMSGate extends CComponent{
      * @param $string
      * @return string
      */
-    protected static function stringToUTF16Hex($string){
+    protected static function stringToUTF16Hex($string)
+    {
         return bin2hex(mb_convert_encoding($string, "UTF-16", "UTF-8"));
     }
 
-
-} 
+}
