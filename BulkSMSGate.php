@@ -41,12 +41,24 @@ class BulkSMSGate extends CComponent{
      * @return mixed $result
      */
     public function send($to, $message){
+
+        $to = static::prepareTo($to);
+
         $body = static::unicodeSMS($this->username, $this->password, $message, $to);
         $result = static::sendMessage($body, $this->url, $this->port);
 
         Yii::log("Message [$message] sent to [$to] with result: [" . print_r($result, 1) . "]", CLogger::LEVEL_INFO, 'application.external.sms.bulksms');
 
         return $result;
+    }
+
+    /**
+     * Re
+     * @param $to
+     * @return string
+     */
+    protected static function prepareTo($to){
+        return preg_replace("/[^0-9,.]/", "", $to);
     }
 
     protected function sendMessage($post_body, $url, $port){
