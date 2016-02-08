@@ -215,3 +215,25 @@ class BulkSMSGateUTF16Encoder implements BulkSMSGateEncoder {
     }
 
 }
+
+class BulkSMSGateISO8859Encoder implements BulkSMSGateEncoder {
+    public function SMSPostData($username, $password, $message, $to)
+    {
+        return [
+            'username' => $username,
+            'password' => $password,
+            'message' => static::stringToISO8859($message),
+            'msisdn' => $to,
+        ];
+    }
+
+    /**
+     * @param $string
+     * @return string
+     */
+    protected static function stringToISO8859($string)
+    {
+        return mb_convert_encoding($string, "ISO-8859-1", "UTF-8");
+    }
+
+}
