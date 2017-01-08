@@ -8,6 +8,12 @@ class BulkSMSGate extends CComponent
 {
 
     /**
+     * Classname of encoder class
+     * @var string
+     */
+    public $message_encoder = 'BulkSMSGateUTF16Encoder';
+
+    /**
      * Username, provided by bulksms.com
      * @var string
      */
@@ -31,6 +37,7 @@ class BulkSMSGate extends CComponent
      */
     public $port = 5567;
 
+    private $encoder = null;
 
     public function init()
     {
@@ -47,7 +54,7 @@ class BulkSMSGate extends CComponent
 
         $to = static::prepareTo($to);
 
-        $body = static::unicodeSMS($this->username, $this->password, $message, $to);
+        $body = $this->SMSPostBody($this->username, $this->password, $message, $to);
         $result = static::sendMessage($body, $this->url, $this->port);
 
         Yii::log("Message [$message] sent to [$to] with result: [" . print_r($result, 1) . "]", CLogger::LEVEL_INFO, 'application.external.sms.bulksms');
@@ -131,15 +138,17 @@ class BulkSMSGate extends CComponent
         return $sms_result;
     }
 
-    protected static function unicodeSMS($username, $password, $message, $to)
+    protected function SMSPostBody($username, $password, $message, $to)
     {
-        $postFields = [
-            'username' => $username,
-            'password' => $password,
-            'message' => static::stringToUTF16Hex($message),
-            'msisdn' => $to,
-            'dca' => '16bit'
-        ];
+        if (null === $this->encoder) {
+            $this->encoder = new $this->message_encoder;
+        }
+        $postFields = $this->encoder->SMSPostData(
+            $username,
+            $password,
+            $message,
+            $to
+        );
         return static::makePostBody($postFields);
 
     }
@@ -177,6 +186,24 @@ class BulkSMSGate extends CComponent
     {
         return 0;
     }
+}
+
+interface BulkSMSGateEncoder {
+    public function SMSPostData($username, $password, $message, $to);
+}
+
+
+class BulkSMSGateUTF16Encoder implements BulkSMSGateEncoder {
+    public function SMSPostData($username, $password, $message, $to)
+    {
+        return [
+            'username' => $username,
+            'password' => $password,
+            'message' => static::stringToUTF16Hex($message),
+            'msisdn' => $to,
+            'dca' => '16bit'
+        ];
+    }
 
     /**
      * @param $string
@@ -185,6 +212,28 @@ class BulkSMSGate extends CComponent
     protected static function stringToUTF16Hex($string)
     {
         return bin2hex(mb_convert_encoding($string, "UTF-16", "UTF-8"));
+    }
+
+}
+
+class BulkSMSGateISO8859Encoder implements BulkSMSGateEncoder {
+    public function SMSPostData($username, $password, $message, $to)
+    {
+        return [
+            'username' => $username,
+            'password' => $password,
+            'message' => static::stringToISO8859($message),
+            'msisdn' => $to,
+        ];
+    }
+
+    /**
+     * @param $string
+     * @return string
+     */
+    protected static function stringToISO8859($string)
+    {
+        return mb_convert_encoding($string, "ISO-8859-1", "UTF-8");
     }
 
 }
